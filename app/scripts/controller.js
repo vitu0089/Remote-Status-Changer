@@ -1,5 +1,6 @@
 let currentMap = new Map()
 const host = window.location.host
+const socket = new WebSocket(`ws://${document.location.hostname}:61235`)
 
 async function GetImageData() {
     let body = await fetch(`http://${host}/controls/imageData`)
@@ -23,14 +24,19 @@ async function UpdateList() {
         node.innerHTML = `<h2>${item.Name}</h2>`
         document.getElementById("list").appendChild(node)
         currentMap.set(item.Name, node)
+
+        // Clickability
+        node.onclick = function(event) {
+            // Force server to change image
+            socket.send(item.Name)
+        }
     }
 }
 
 // Build List
 UpdateList()
 
-// Connect to websocket
-const socket = new WebSocket(`ws://${document.location.hostname}:61235`)
+// Socket connections
 socket.addEventListener("open", (ev) => {
     console.log("Socket connected successfully")
 })

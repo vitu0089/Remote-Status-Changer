@@ -70,6 +70,11 @@ websocketServer.on("connection", (ws, req) => {
     VerboseLog("Websocket connected on IP:", req.socket.remoteAddress);
     // Add to list
     socketArray.push(ws);
+    // Prepare for "SET" requests
+    ws.on("message", (data) => {
+        const newImageName = data.toString();
+        ChangeImage(newImageName);
+    });
     // Send initial image
     ws.send(selectedImage && JSON.stringify(imageData_1.default.find(v => v.Name == selectedImage)) || "None");
 });
@@ -84,7 +89,7 @@ async function BroadcastCurrentImage() {
     for (const i in socketArray) {
         const index = Number.parseInt(i);
         const socket = socketArray[index];
-        if (!socket || socket.CLOSED) {
+        if (!socket) {
             // Socket has closed or dissapeared, probably closed though
             socketArray.slice(index, 1);
             return BroadcastCurrentImage();
