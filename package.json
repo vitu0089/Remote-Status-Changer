@@ -1,0 +1,19 @@
+{
+  "name": "remote-status-changer",
+  "version": "1.0.0",
+  "description": "A project made to change status on a different monitor from your workstation",
+  "license": "ISC",
+  "author": "vitu0089",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.0"
+  }
+}
