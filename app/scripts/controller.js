@@ -37,7 +37,7 @@ async function UpdateList() {
 UpdateList()
 
 // Socket connections
-socket.addEventListener("open", (ev) => {
+socket.addEventListener("open", () => {
     console.log("Socket connected successfully")
 })
 socket.addEventListener("message", (message) => {

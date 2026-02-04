@@ -5,7 +5,8 @@ import { WebSocket, WebSocketServer } from "ws"
 
 // Settings
 const webPort = 39984
-const socketPort = 61235
+const socketManagerPort = 61235
+const socketDisplayPort = 61236
 const verboseMode = true
 
 // Variables
@@ -25,9 +26,9 @@ app.use((req, res, next) => {
 })
 
 // Application Connections
-app.get("/Display", (req, res) => {
-    // Send image to client and establish a connection
-    res.send("Hello worlds")
+app.get("/display", (req, res) => {
+    const filePath = `${__dirname}/pages/display.html`
+    res.sendFile(filePath)
 })
 
 app.get("/controls", (req, res) => {
@@ -72,20 +73,30 @@ app.get("/script/:scriptName", (req, res) => {
     res.sendFile(filePath)
 })
 
-// Websocket
-const websocketServer = new WebSocketServer({port: socketPort})
-websocketServer.on("connection", (ws, req) => {
-    VerboseLog("Websocket connected on IP:", req.socket.remoteAddress)
+// Websockets
+const managerWebsocketServer = new WebSocketServer({port: socketManagerPort})
+managerWebsocketServer.on("connection", (ws, req) => {
+    VerboseLog("Websocket MANAGER connected on IP:", req.socket.remoteAddress)
 
     // Add to list
     socketArray.push(ws)
 
     // Prepare for "SET" requests
-
     ws.on("message", (data) => {
         const newImageName = data.toString()
         ChangeImage(newImageName)
     })
+
+    // Send initial image
+    ws.send(selectedImage && JSON.stringify(allImages.find(v => v.Name == selectedImage)) || "None")
+})
+
+const displayWebsocketServer = new WebSocketServer({port: socketDisplayPort})
+displayWebsocketServer.on("connection", (ws, req) => {
+    VerboseLog("Websocket DISPLAY connected on IP:", req.socket.remoteAddress)
+
+    // Add to list
+    socketArray.push(ws)
 
     // Send initial image
     ws.send(selectedImage && JSON.stringify(allImages.find(v => v.Name == selectedImage)) || "None")
