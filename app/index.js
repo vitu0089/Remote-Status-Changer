@@ -12,6 +12,22 @@ const webPort = 39984;
 const socketManagerPort = 61235;
 const socketDisplayPort = 61236;
 const verboseMode = true;
+const ChangeTimes = [
+    {
+        TimeOfDayPlusTime: {
+            hours: 9
+        },
+        Image: "Open 9 -> 14",
+        AvoidWeekends: true
+    },
+    {
+        TimeOfDayPlusTime: {
+            hours: 14
+        },
+        Image: "Long Pause (Purple)",
+        AvoidWeekends: true
+    }
+];
 // Variables
 const app = (0, express_1.default)();
 let selectedImage = null;
@@ -135,4 +151,52 @@ async function ChangeImage(name) {
 }
 // Default Image
 ChangeImage(defaultImage);
+// Automation
+async function GetTimeTillChange() {
+    const date = new Date();
+    const day = date.getDay();
+    const isWeekend = day == 0 || day == 6;
+    let nextSwitch = null;
+    // Run through the dates
+    for (const key in ChangeTimes) {
+        // Get object and verify data
+        const data = ChangeTimes[key];
+        if (!data)
+            continue;
+        // Weekend Check
+        if (data.AvoidWeekends && isWeekend)
+            continue;
+        // Time Check [In Ms, unfortunately]
+        let targetTimeFromMidnight = (data.TimeOfDayPlusTime.hours || 0) * 3_600_000 + // Hours in ms
+            (data.TimeOfDayPlusTime.minutes || 0) * 60_000; // Minutes in ms
+        let currentTimeFromMidnight = date.getHours() * 3_600_000 +
+            date.getMinutes() * 60_000 +
+            date.getSeconds() * 1_000 +
+            date.getMilliseconds();
+        // Already Passed Check
+        if (currentTimeFromMidnight >= targetTimeFromMidnight)
+            continue;
+        // Compare And Apply
+        const calculatedWaitTime = targetTimeFromMidnight - currentTimeFromMidnight;
+        if (!nextSwitch || calculatedWaitTime < nextSwitch.TimeMs) {
+            nextSwitch = {
+                TimeMs: calculatedWaitTime,
+                Image: data.Image
+            };
+        }
+    }
+    return nextSwitch || {
+        TimeMs: 600_000, // Wait 10 minutes before trying again, stay open in the meantime
+        Image: "Open 9 -> 14"
+    };
+}
+async function RunAutomationLoop() {
+    const timeTillChangeObject = await GetTimeTillChange();
+    setTimeout(() => {
+        ChangeImage(timeTillChangeObject.Image);
+        // Wait 5 seconds to not overlap anything
+        setTimeout(RunAutomationLoop, 5_000);
+    }, timeTillChangeObject.TimeMs);
+}
+RunAutomationLoop();
 //# sourceMappingURL=index.js.map
