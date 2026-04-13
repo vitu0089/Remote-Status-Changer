@@ -2,12 +2,16 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 let allImages = [
     {
-        Name: "Galaxy",
-        FileName: "Galaxy.jpg"
+        Name: "Open 9 -> 14",
+        FileName: "Open.png"
     },
     {
-        Name: "Mountains",
-        FileName: "Mountains.jpg"
+        Name: "Short Pause (Yellow)",
+        FileName: "ShortPause.png"
+    },
+    {
+        Name: "Long Pause (Purple)",
+        FileName: "LongPause.png"
     }
 ];
 exports.default = allImages;

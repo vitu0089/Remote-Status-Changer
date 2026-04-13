@@ -15,6 +15,7 @@ const verboseMode = true;
 // Variables
 const app = (0, express_1.default)();
 let selectedImage = null;
+let defaultImage = "Open 9 -> 14";
 let socketArray = [];
 // Verbose printout
 function VerboseLog(...args) {
@@ -133,5 +134,5 @@ async function ChangeImage(name) {
     return true;
 }
 // Default Image
-ChangeImage("Galaxy");
+ChangeImage(defaultImage);
 //# sourceMappingURL=index.js.map

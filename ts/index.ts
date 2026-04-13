@@ -12,6 +12,7 @@ const verboseMode = true
 // Variables
 const app = express()
 let selectedImage : string | null = null
+let defaultImage = "Open 9 -> 14"
 let socketArray : WebSocket[] = []
 
 // Verbose printout
@@ -157,4 +158,4 @@ async function ChangeImage(name : string | null) : Promise<Boolean> {
 }
 
 // Default Image
-ChangeImage("Galaxy")
+ChangeImage(defaultImage)
