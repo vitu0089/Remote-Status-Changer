@@ -155,7 +155,7 @@ async function BroadcastCurrentImage() {
         const socket = socketArray[index]
         if (!socket) {
             // Socket has closed or dissapeared, probably closed though
-            socketArray.slice(index, 1)
+            socketArray.splice(index, 1)
             return BroadcastCurrentImage()
         }
     }
