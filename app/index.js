@@ -100,6 +100,17 @@ managerWebsocketServer.on("connection", (ws, req) => {
         const newImageName = data.toString();
         ChangeImage(newImageName);
     });
+    // Websocket cleanup
+    ws.on("close", () => {
+        VerboseLog("Websocket MANAGE connection closed on IP:", req.socket.remoteAddress);
+        const socketId = socketArray.findIndex(v => v == ws);
+        if (socketId >= 0) {
+            socketArray.splice(socketId, 1);
+        }
+        else {
+            VerboseLog("Unable to find websocket in array");
+        }
+    });
     // Send initial image
     ws.send(selectedImage && JSON.stringify(imageData_1.default.find(v => v.Name == selectedImage)) || "None");
 });
@@ -139,7 +150,7 @@ async function BroadcastCurrentImage() {
     }
 }
 async function ChangeImage(name, automatic) {
-    VerboseLog(`${automatic && `[ AUTOMATIC ]` || ""}Changing image to:`, name);
+    VerboseLog(`${automatic && `[ AUTOMATIC ] ` || ""}Changing image to:`, name);
     // Null Check
     if (name == null) {
         selectedImage = null;

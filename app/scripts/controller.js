@@ -54,4 +54,7 @@ socket.addEventListener("message", (message) => {
     if (imageAvailable) {
         displayNode.setAttribute("src", `/img/${imageJson.FileName}`)
     }
+
+    // Message back
+    socket.send()
 })
