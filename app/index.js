@@ -131,8 +131,8 @@ async function BroadcastCurrentImage() {
         }
     }
 }
-async function ChangeImage(name) {
-    VerboseLog("Changing image to:", name);
+async function ChangeImage(name, automatic) {
+    VerboseLog(`${automatic && `[ AUTOMATIC ]` || ""}Changing image to:`, name);
     // Null Check
     if (name == null) {
         selectedImage = null;
@@ -157,6 +157,7 @@ async function GetTimeTillChange() {
     const day = date.getDay();
     const isWeekend = day == 0 || day == 6;
     let nextSwitch = null;
+    let todaysSchedulePassed = true;
     // Run through the dates
     for (const key in ChangeTimes) {
         // Get object and verify data
@@ -176,6 +177,7 @@ async function GetTimeTillChange() {
         // Already Passed Check
         if (currentTimeFromMidnight >= targetTimeFromMidnight)
             continue;
+        todaysSchedulePassed = false;
         // Compare And Apply
         const calculatedWaitTime = targetTimeFromMidnight - currentTimeFromMidnight;
         if (!nextSwitch || calculatedWaitTime < nextSwitch.TimeMs) {
@@ -185,15 +187,20 @@ async function GetTimeTillChange() {
             };
         }
     }
-    return nextSwitch || {
-        TimeMs: 600_000, // Wait 10 minutes before trying again, stay open in the meantime
-        Image: "Open 9 -> 14"
-    };
+    return nextSwitch ||
+        todaysSchedulePassed && {
+            TimeMs: 86_460_000 - date.getMilliseconds(), // [ Midnight clock ] If all tasks have passed, just wait till a minute past midnight to try again
+            Image: selectedImage || "Open 9 -> 14"
+        } ||
+        {
+            TimeMs: 600_000, // [ Fallback ] Wait 10 minutes before trying again, stay open in the meantime
+            Image: "Open 9 -> 14"
+        };
 }
 async function RunAutomationLoop() {
     const timeTillChangeObject = await GetTimeTillChange();
     setTimeout(() => {
-        ChangeImage(timeTillChangeObject.Image);
+        ChangeImage(timeTillChangeObject.Image, true);
         // Wait 5 seconds to not overlap anything
         setTimeout(RunAutomationLoop, 5_000);
     }, timeTillChangeObject.TimeMs);

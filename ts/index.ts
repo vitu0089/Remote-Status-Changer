@@ -152,8 +152,8 @@ async function BroadcastCurrentImage() {
     }
 }
 
-async function ChangeImage(name : string | null) : Promise<Boolean> {
-    VerboseLog("Changing image to:", name)
+async function ChangeImage(name : string | null, automatic? : boolean) : Promise<Boolean> {
+    VerboseLog(`${automatic && `[ AUTOMATIC ]` || ""}Changing image to:`, name)
 
     // Null Check
     if (name == null) {
@@ -184,6 +184,7 @@ async function GetTimeTillChange() : Promise<{TimeMs : number, Image : string}> 
     const isWeekend = day == 0 || day == 6
 
     let nextSwitch : {TimeMs : number, Image : string} | null = null
+    let todaysSchedulePassed = true
 
     // Run through the dates
     for (const key in ChangeTimes) {
@@ -208,6 +209,7 @@ async function GetTimeTillChange() : Promise<{TimeMs : number, Image : string}> 
 
         // Already Passed Check
         if (currentTimeFromMidnight >= targetTimeFromMidnight) continue;
+        todaysSchedulePassed = false
 
         // Compare And Apply
         const calculatedWaitTime = targetTimeFromMidnight - currentTimeFromMidnight
@@ -219,8 +221,13 @@ async function GetTimeTillChange() : Promise<{TimeMs : number, Image : string}> 
         }
     }
 
-    return nextSwitch || {
-        TimeMs : 600_000, // Wait 10 minutes before trying again, stay open in the meantime
+    return nextSwitch ||
+    todaysSchedulePassed && {
+        TimeMs : 86_460_000 - date.getMilliseconds(), // [ Midnight clock ] If all tasks have passed, just wait till a minute past midnight to try again
+        Image : selectedImage || "Open 9 -> 14"
+    } ||
+    {
+        TimeMs : 600_000, // [ Fallback ] Wait 10 minutes before trying again, stay open in the meantime
         Image : "Open 9 -> 14"
     }
 }
@@ -228,7 +235,7 @@ async function GetTimeTillChange() : Promise<{TimeMs : number, Image : string}> 
 async function RunAutomationLoop() {
     const timeTillChangeObject = await GetTimeTillChange()
     setTimeout(() => {
-        ChangeImage(timeTillChangeObject.Image)
+        ChangeImage(timeTillChangeObject.Image, true)
 
         // Wait 5 seconds to not overlap anything
         setTimeout(RunAutomationLoop, 5_000)
