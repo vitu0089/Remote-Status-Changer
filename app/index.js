@@ -26,6 +26,13 @@ const ChangeTimes = [
         },
         Image: "Long Pause (Purple)",
         AvoidWeekends: true
+    },
+    {
+        TimeOfDayPlusTime: {
+            hours: 17
+        },
+        Image: "Long Pause (Purple)",
+        AvoidWeekends: true
     }
 ];
 // Variables

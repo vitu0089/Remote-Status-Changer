@@ -10,8 +10,8 @@ let allImages = [
         FileName: "ShortPause.png"
     },
     {
-        Name: "Long Pause (Purple)",
-        FileName: "LongPause.png"
+        Name: "Closed (Purple)",
+        FileName: "Closed.png"
     }
 ];
 exports.default = allImages;

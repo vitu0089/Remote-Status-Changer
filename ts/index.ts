@@ -9,7 +9,7 @@ const socketManagerPort = 61235
 const socketDisplayPort = 61236
 const verboseMode = true
 const ChangeTimes : {TimeOfDayPlusTime : {hours? : number, minutes? : number}, Image : string, AvoidWeekends : boolean}[] = [
-    {
+    { // Open in the morning
         TimeOfDayPlusTime : {
             hours : 9
         },
@@ -17,9 +17,17 @@ const ChangeTimes : {TimeOfDayPlusTime : {hours? : number, minutes? : number}, I
         AvoidWeekends : true
     },
 
-    {
+    { // CLose when that time comes
         TimeOfDayPlusTime : {
             hours : 14
+        },
+        Image : "Long Pause (Purple)",
+        AvoidWeekends : true
+    },
+
+    { // Close when the day is completely over, to override manual input
+        TimeOfDayPlusTime : {
+            hours : 17
         },
         Image : "Long Pause (Purple)",
         AvoidWeekends : true
