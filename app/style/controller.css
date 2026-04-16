@@ -14,7 +14,7 @@ h1 {
 }
 
 .container div {
-    background-color: rgb(66, 95, 104);
+    background-color: rgb(104, 66, 66);
     box-shadow: 12px 12px 12px 7px rgb(0,0,0);
     border-style: dashed;
     border-radius: 10px;
