@@ -73,3 +73,13 @@ img {
     background-color: rgb(176, 218, 231);
     cursor: pointer;
 }
+
+#timerBackground {
+    color: white;
+    height: 4vh;
+    margin-top: 1vh;
+    align-items: center;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+}

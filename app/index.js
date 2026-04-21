@@ -40,6 +40,7 @@ const app = (0, express_1.default)();
 let selectedImage = null;
 let defaultImage = "Open 9 -> 14";
 let socketArray = [];
+let nextChangeDisplayValue = 0;
 // Verbose printout
 function VerboseLog(...args) {
     if (!verboseMode)
@@ -91,6 +92,9 @@ app.get("/script/:scriptName", (req, res) => {
 });
 // Websockets
 const managerWebsocketServer = new ws_1.WebSocketServer({ port: socketManagerPort });
+function SendWebsocketMessage(websocket, data) {
+    websocket.send(JSON.stringify(data));
+}
 managerWebsocketServer.on("connection", (ws, req) => {
     VerboseLog("Websocket MANAGER connected on IP:", req.socket.remoteAddress);
     // Add to list
@@ -112,7 +116,14 @@ managerWebsocketServer.on("connection", (ws, req) => {
         }
     });
     // Send initial image
-    ws.send(selectedImage && JSON.stringify(imageData_1.default.find(v => v.Name == selectedImage)) || "None");
+    SendWebsocketMessage(ws, {
+        data: selectedImage && JSON.stringify(imageData_1.default.find(v => v.Name == selectedImage)) || "None",
+        type: "Image"
+    });
+    SendWebsocketMessage(ws, {
+        data: JSON.stringify({ timeLeft: nextChangeDisplayValue - new Date().getMilliseconds() }),
+        type: "Timer"
+    });
 });
 const displayWebsocketServer = new ws_1.WebSocketServer({ port: socketDisplayPort });
 displayWebsocketServer.on("connection", (ws, req) => {
@@ -222,6 +233,8 @@ async function RunAutomationLoop() {
         // Wait 5 seconds to not overlap anything
         setTimeout(RunAutomationLoop, 5_000);
     }, timeTillChangeObject.TimeMs);
+    // Set display value
+    nextChangeDisplayValue = new Date().getMilliseconds() + timeTillChangeObject.TimeMs;
 }
 RunAutomationLoop();
 //# sourceMappingURL=index.js.map

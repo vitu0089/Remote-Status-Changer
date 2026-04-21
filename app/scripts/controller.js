@@ -2,6 +2,7 @@ let currentMap = new Map()
 const host = window.location.host
 let socket = new WebSocket(`ws://${document.location.hostname}:61235`)
 const body = document.getElementById("body")
+const timer = document.getElementById("timer")
 const originalBodyColor = window.getComputedStyle(body).backgroundColor
 async function GetImageData() {
     let body = await fetch(`http://${host}/controls/imageData`)
@@ -53,21 +54,29 @@ function SetupSocketConnection(reboot) {
         body.style.backgroundColor = originalBodyColor
     })
     socket.addEventListener("message", (message) => {
-        let selectedImage = message.data
-        let imageAvailable = selectedImage != "None"
-        let displayNode = document.getElementById("displayImage")
-        if (!displayNode) {
-            console.warn("Unable to find displaynode")
-            return
-        }
-    
-        // Set image
-        const imageJson = JSON.parse(selectedImage)
-        if (imageAvailable) {
-            displayNode.setAttribute("src", `/img/${imageJson.FileName}`)
+
+        // Selection
+        let data = JSON.parse(message.data)
+        
+        if (data.type == "Image") {
+            // Image
+            let selectedImage = JSON.parse(data.data)
+            let imageAvailable = selectedImage != "None"
+            let displayNode = document.getElementById("displayImage")
+            if (!displayNode) {
+                console.warn("Unable to find displaynode")
+                return
+            }
+        
+            // Set image
+            if (imageAvailable) {
+                displayNode.setAttribute("src", `/img/${selectedImage.FileName}`)
+            }
+        } else if (data.type == "Timer") {
+            console.log(data)
         }
     })
-    socket.onclose = (event) => {
+    socket.onclose = () => {
         body.style.background = "#501616"
 
         // wait a little before each reboot
@@ -75,3 +84,12 @@ function SetupSocketConnection(reboot) {
     }
 }
 SetupSocketConnection(false)
+
+// Timer
+function UpdateTimer() {
+
+}
+
+setInterval(() => {
+    timer.innerHTML = "Nothing Yet"
+}, 300)
