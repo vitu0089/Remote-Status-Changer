@@ -147,8 +147,11 @@ displayWebsocketServer.on("connection", (ws, req) => {
     // Add to list
     socketArray.push(ws)
 
-    // Send initial image
-    ws.send(selectedImage && JSON.stringify(allImages.find(v => v.Name == selectedImage)) || "None")
+    // Send image
+    SendWebsocketMessage(ws, {
+        data: selectedImage && JSON.stringify(allImages.find(v => v.Name == selectedImage)) || "None",
+        type: "Image" 
+    })
 })
 
 // Start Server
@@ -178,7 +181,10 @@ async function BroadcastCurrentImage() {
     for (const i in socketArray) {
         const socket = socketArray[i]
         if (socket) {
-            socket.send(selectedImage != null && JSON.stringify(image) || "None")
+            SendWebsocketMessage(socket, {
+                data: selectedImage != null && JSON.stringify(image) || "None",
+                type: "Image" 
+            })
         }
     }
 }
