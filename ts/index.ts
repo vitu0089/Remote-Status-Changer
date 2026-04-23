@@ -8,6 +8,7 @@ const webPort = 39984
 const socketManagerPort = 61235
 const socketDisplayPort = 61236
 const verboseMode = true
+process.env.TZ = "Europe/Copenhagen"
 const ChangeTimes : {TimeOfDayPlusTime : {hours? : number, minutes? : number}, Image : string, AvoidWeekends : boolean}[] = [
     { // Open in the morning
         TimeOfDayPlusTime : {
@@ -136,7 +137,7 @@ managerWebsocketServer.on("connection", (ws, req) => {
         type: "Image" 
     })
     SendWebsocketMessage(ws, {
-        data: JSON.stringify({timeLeft : nextChangeDisplayValue - new Date().getTime(), nextImage: nextImage}),
+        data: JSON.stringify({timeLeft : nextChangeDisplayValue - (new Date().getTime()), nextImage: nextImage}),
         type : "Timer"
     })
 })
