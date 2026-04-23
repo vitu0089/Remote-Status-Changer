@@ -3,6 +3,8 @@ const host = window.location.host
 let socket = new WebSocket(`ws://${document.location.hostname}:61235`)
 const body = document.getElementById("body")
 const timer = document.getElementById("timer")
+let nextChangeTime = 0
+let nextChangeImage = ""
 const originalBodyColor = window.getComputedStyle(body).backgroundColor
 async function GetImageData() {
     let body = await fetch(`http://${host}/controls/imageData`)
@@ -43,6 +45,24 @@ async function UpdateList() {
 // Build List
 UpdateList()
 
+// Timer
+function UpdateTimer() {
+    let date = new Date()
+    let secondsLeft = Math.floor(Math.max(nextChangeTime - date.getTime(), 0) / 1_000)
+    let hoursLeft = Math.floor(secondsLeft / 3_600)
+    let minutesLeft = Math.floor((secondsLeft - (hoursLeft * 3_600)) / 60)
+
+    // Correct seconds
+    secondsLeft = secondsLeft - (hoursLeft * 3_600) - (minutesLeft * 60)
+
+    // Change text
+    timer.innerHTML = `<em>${hoursLeft < 10 && "0" || ""}${hoursLeft}:${minutesLeft < 10 && "0" || ""}${minutesLeft}:${secondsLeft < 10 && "0" || ""}${secondsLeft}</em> Till Change To: <u>${nextChangeImage}</u>`
+}
+
+setInterval(() => {
+    UpdateTimer()
+}, 300)
+
 // Socket connections
 function SetupSocketConnection(reboot) {
     if (reboot) {
@@ -73,7 +93,10 @@ function SetupSocketConnection(reboot) {
                 displayNode.setAttribute("src", `/img/${selectedImage.FileName}`)
             }
         } else if (data.type == "Timer") {
-            console.log(data)
+            let changeData = JSON.parse(data.data)
+            nextChangeTime = new Date().getTime() + changeData.timeLeft
+            nextChangeImage = changeData.nextImage
+            UpdateTimer()
         }
     })
     socket.onclose = () => {
@@ -84,12 +107,3 @@ function SetupSocketConnection(reboot) {
     }
 }
 SetupSocketConnection(false)
-
-// Timer
-function UpdateTimer() {
-
-}
-
-setInterval(() => {
-    timer.innerHTML = "Nothing Yet"
-}, 300)

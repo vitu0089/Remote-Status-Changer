@@ -17,11 +17,11 @@ const ChangeTimes : {TimeOfDayPlusTime : {hours? : number, minutes? : number}, I
         AvoidWeekends : true
     },
 
-    { // CLose when that time comes
+    { // Close when that time comes
         TimeOfDayPlusTime : {
             hours : 14
         },
-        Image : "Long Pause (Purple)",
+        Image : "Closed (Purple)",
         AvoidWeekends : true
     },
 
@@ -29,7 +29,7 @@ const ChangeTimes : {TimeOfDayPlusTime : {hours? : number, minutes? : number}, I
         TimeOfDayPlusTime : {
             hours : 17
         },
-        Image : "Long Pause (Purple)",
+        Image : "Closed (Purple)",
         AvoidWeekends : true
     }
 ]
@@ -40,6 +40,7 @@ let selectedImage : string | null = null
 let defaultImage = "Open 9 -> 14"
 let socketArray : WebSocket[] = []
 let nextChangeDisplayValue = 0
+let nextImage : string | null = null
 
 // Verbose printout
 function VerboseLog(...args:any) {
@@ -135,7 +136,7 @@ managerWebsocketServer.on("connection", (ws, req) => {
         type: "Image" 
     })
     SendWebsocketMessage(ws, {
-        data: JSON.stringify({timeLeft : nextChangeDisplayValue - new Date().getMilliseconds()}),
+        data: JSON.stringify({timeLeft : nextChangeDisplayValue - new Date().getTime(), nextImage: nextImage}),
         type : "Timer"
     })
 })
@@ -190,6 +191,10 @@ async function BroadcastCurrentImage() {
 }
 
 async function ChangeImage(name : string | null, automatic? : boolean) : Promise<Boolean> {
+    // Same image check
+    if (name == selectedImage) return false;
+
+    // Logging
     VerboseLog(`${automatic && `[ AUTOMATIC ] ` || ""}Changing image to:`, name)
 
     // Null Check
@@ -215,12 +220,13 @@ async function ChangeImage(name : string | null, automatic? : boolean) : Promise
 ChangeImage(defaultImage)
 
 // Automation
-async function GetTimeTillChange() : Promise<{TimeMs : number, Image : string}> {
+async function GetAutomatedImageData() : Promise<{TimeToChangeMs : number, NextImage : string, CurrentImage : string | undefined}> {
     const date = new Date()
     const day = date.getDay()
     const isWeekend = day == 0 || day == 6
 
-    let nextSwitch : {TimeMs : number, Image : string} | null = null
+    let currentDisplay : string | undefined = undefined
+    let nextSwitch : {TimeToChangeMs : number, NextImage : string} | null = null
     let todaysSchedulePassed = true
 
     // Run through the dates
@@ -245,40 +251,73 @@ async function GetTimeTillChange() : Promise<{TimeMs : number, Image : string}> 
             date.getMilliseconds()
 
         // Already Passed Check
-        if (currentTimeFromMidnight >= targetTimeFromMidnight) continue;
+        if (currentTimeFromMidnight >= targetTimeFromMidnight) {
+            currentDisplay = data.Image
+            continue
+        }
         todaysSchedulePassed = false
 
         // Compare And Apply
         const calculatedWaitTime = targetTimeFromMidnight - currentTimeFromMidnight
-        if (!nextSwitch || calculatedWaitTime < nextSwitch.TimeMs) {
+        if (!nextSwitch || calculatedWaitTime < nextSwitch.TimeToChangeMs) {
+
             nextSwitch = {
-                TimeMs : calculatedWaitTime,
-                Image : data.Image
+                TimeToChangeMs : calculatedWaitTime,
+                NextImage : data.Image
             }
         }
     }
 
-    return nextSwitch ||
-    todaysSchedulePassed && {
-        TimeMs : 86_460_000 - date.getMilliseconds(), // [ Midnight clock ] If all tasks have passed, just wait till a minute past midnight to try again
-        Image : selectedImage || "Open 9 -> 14"
+    if (nextSwitch) {
+        return {
+            TimeToChangeMs : nextSwitch.TimeToChangeMs,
+            NextImage : nextSwitch.NextImage,
+            CurrentImage : currentDisplay
+        }
+    }
+
+    return todaysSchedulePassed && {
+        TimeToChangeMs : 86_460_000 - date.getMilliseconds(), // [ Midnight clock ] If all tasks have passed, just wait till a minute past midnight to try again
+        NextImage : selectedImage || "Open 9 -> 14",
+        CurrentImage : currentDisplay
     } ||
     {
-        TimeMs : 600_000, // [ Fallback ] Wait 10 minutes before trying again, stay open in the meantime
-        Image : "Open 9 -> 14"
+        TimeToChangeMs : 600_000, // [ Fallback ] Wait 10 minutes before trying again, stay open in the meantime
+        NextImage : "Open 9 -> 14",
+        CurrentImage : currentDisplay
     }
 }
 
 async function RunAutomationLoop() {
-    const timeTillChangeObject = await GetTimeTillChange()
+    const timeTillChangeObject = await GetAutomatedImageData()
+
+    // Change image to keep schedule
+    if (timeTillChangeObject.CurrentImage) {
+        ChangeImage(timeTillChangeObject.CurrentImage, true)
+    }
+
     setTimeout(() => {
-        ChangeImage(timeTillChangeObject.Image, true)
+        ChangeImage(timeTillChangeObject.NextImage, true)
 
         // Wait 5 seconds to not overlap anything
         setTimeout(RunAutomationLoop, 5_000)
-    }, timeTillChangeObject.TimeMs)
+        VerboseLog("Waiting for 5 seconds to avoid overlap")
+    }, timeTillChangeObject.TimeToChangeMs)
+    VerboseLog(`Waiting for ${Math.floor(timeTillChangeObject.TimeToChangeMs / 1000)} seconds to change to image ${timeTillChangeObject.NextImage}`)
 
     // Set display value
-    nextChangeDisplayValue = new Date().getMilliseconds() + timeTillChangeObject.TimeMs
+    nextChangeDisplayValue = new Date().getTime() + timeTillChangeObject.TimeToChangeMs
+    nextImage = timeTillChangeObject.NextImage
+
+    // Broadcast timer signal
+    for (const i in socketArray) {
+        const socket = socketArray[i]
+        if (socket) {
+            SendWebsocketMessage(socket, {
+                data: JSON.stringify({timeLeft : nextChangeDisplayValue - new Date().getTime(), nextImage: nextImage}),
+                type : "Timer"
+            })
+        }
+    }
 }
 RunAutomationLoop()
