@@ -53,6 +53,11 @@ app.use((req, res, next) => {
     VerboseLog(req.url, "IP:", req.ip);
     next();
 });
+// Common Functions
+function GetTimeTillMidnight() {
+    let currentDate = new Date();
+    return new Date(currentDate).setHours(24, 0, 0, 0) - currentDate.getTime();
+}
 // Application Connections
 app.get("/display", (req, res) => {
     const filePath = `${__dirname}/pages/display.html`;
@@ -239,7 +244,7 @@ async function GetAutomatedImageData() {
         };
     }
     return todaysSchedulePassed && {
-        TimeToChangeMs: 86_460_000 - date.getMilliseconds(), // [ Midnight clock ] If all tasks have passed, just wait till a minute past midnight to try again
+        TimeToChangeMs: GetTimeTillMidnight(), // [ Midnight clock ] If all tasks have passed, just wait till a minute past midnight to try again
         NextImage: selectedImage || "Open 9 -> 14",
         CurrentImage: currentDisplay
     } ||
