@@ -35,6 +35,9 @@ const ChangeTimes : {TimeOfDayPlusTime : {hours? : number, minutes? : number}, I
     }
 ]
 
+// Types
+type StoredSettingNames = "OverrideTimer"
+
 // Variables
 const app = express()
 let selectedImage : string | null = null
@@ -42,6 +45,9 @@ let defaultImage = "Open 9 -> 14"
 let socketArray : WebSocket[] = []
 let nextChangeDisplayValue = 0
 let nextImage : string | null = null
+let storedSettings : {[key in StoredSettingNames] : any} = {
+    OverrideTimer : false
+}
 
 // Verbose printout
 function VerboseLog(...args:any) {
@@ -110,7 +116,7 @@ app.get("/script/:scriptName", (req, res) => {
 
 // Websockets
 const managerWebsocketServer = new WebSocketServer({port: socketManagerPort})
-function SendWebsocketMessage(websocket : WebSocket, data : {data : string, type : "Image" | "Timer"}) {
+function SendWebsocketMessage(websocket : WebSocket, data : {data : string, type : "Image" | "Timer" | "Settings"}) {
     websocket.send(JSON.stringify(data))
 }
 managerWebsocketServer.on("connection", (ws, req) => {
@@ -120,9 +126,18 @@ managerWebsocketServer.on("connection", (ws, req) => {
     socketArray.push(ws)
 
     // Prepare for "SET" requests
-    ws.on("message", (data) => {
-        const newImageName = data.toString()
-        ChangeImage(newImageName)
+    ws.on("message", (rawData) => {
+        const data = JSON.parse(rawData.toString())
+        
+        if (data.type == "ChangeImage") {
+            // Set image data
+            ChangeImage(data.data)
+        } else if (data.type == "Settings_OverrideTimer") {
+            let newStatus = data.data
+            if (typeof(newStatus) != "boolean") return;
+
+            ChangeSetting("OverrideTimer", newStatus)
+        }
     })
 
     // Websocket cleanup
@@ -145,6 +160,10 @@ managerWebsocketServer.on("connection", (ws, req) => {
     SendWebsocketMessage(ws, {
         data: JSON.stringify({timeLeft : nextChangeDisplayValue - (new Date().getTime()), nextImage: nextImage}),
         type : "Timer"
+    })
+    SendWebsocketMessage(ws, {
+        data: JSON.stringify(storedSettings),
+        type : "Settings"
     })
 })
 
@@ -225,6 +244,51 @@ async function ChangeImage(name : string | null, automatic? : boolean) : Promise
 
 // Default Image
 ChangeImage(defaultImage)
+
+// Change Settings
+async function BroadcastCurrentSettings() {
+    VerboseLog("Broadcasting settings to", socketArray.length, "client(s)")
+    
+    // Validity Check
+    for (const i in socketArray) {
+        const index = Number.parseInt(i)
+        const socket = socketArray[index]
+        if (!socket) {
+            // Socket has closed or dissapeared, probably closed though
+            socketArray.splice(index, 1)
+            return BroadcastCurrentSettings()
+        }
+    }
+
+    // Send
+    const settingsJson = JSON.stringify(storedSettings)
+    for (const i in socketArray) {
+        const socket = socketArray[i]
+        if (socket) {
+            SendWebsocketMessage(socket, {
+                data: settingsJson,
+                type: "Settings" 
+            })
+        }
+    }
+}
+
+async function ChangeSetting(settingName : StoredSettingNames, value : any) { // value MUST be the same type as current settings
+    // Type check
+    let currentValue = storedSettings[settingName]
+    if (currentValue == undefined || typeof(currentValue) != typeof(value) || value == undefined) return false;
+
+    // Match check
+    if (currentValue == value) return true;
+
+    // Set value
+    storedSettings[settingName] = value
+
+    // Broadcast
+    BroadcastCurrentSettings()
+
+    return true
+}
 
 // Automation
 async function GetAutomatedImageData() : Promise<{TimeToChangeMs : number, NextImage : string, CurrentImage : string | undefined}> {
@@ -321,7 +385,7 @@ async function RunAutomationLoop() {
         const socket = socketArray[i]
         if (socket) {
             SendWebsocketMessage(socket, {
-                data: JSON.stringify({timeLeft : nextChangeDisplayValue - new Date().getTime(), nextImage: nextImage}),
+                data: JSON.stringify(storedSettings.OverrideTimer && {timeLeft : "BYPASS"} ||{timeLeft : nextChangeDisplayValue - new Date().getTime(), nextImage: nextImage}),
                 type : "Timer"
             })
         }

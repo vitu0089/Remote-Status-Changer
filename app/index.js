@@ -43,6 +43,9 @@ let defaultImage = "Open 9 -> 14";
 let socketArray = [];
 let nextChangeDisplayValue = 0;
 let nextImage = null;
+let storedSettings = {
+    OverrideTimer: false
+};
 // Verbose printout
 function VerboseLog(...args) {
     if (!verboseMode)
@@ -107,9 +110,18 @@ managerWebsocketServer.on("connection", (ws, req) => {
     // Add to list
     socketArray.push(ws);
     // Prepare for "SET" requests
-    ws.on("message", (data) => {
-        const newImageName = data.toString();
-        ChangeImage(newImageName);
+    ws.on("message", (rawData) => {
+        const data = JSON.parse(rawData.toString());
+        if (data.type == "ChangeImage") {
+            // Set image data
+            ChangeImage(data.data);
+        }
+        else if (data.type == "Settings_OverrideTimer") {
+            let newStatus = data.data;
+            if (typeof (newStatus) != "boolean")
+                return;
+            ChangeSetting("OverrideTimer", newStatus);
+        }
     });
     // Websocket cleanup
     ws.on("close", () => {
@@ -130,6 +142,10 @@ managerWebsocketServer.on("connection", (ws, req) => {
     SendWebsocketMessage(ws, {
         data: JSON.stringify({ timeLeft: nextChangeDisplayValue - (new Date().getTime()), nextImage: nextImage }),
         type: "Timer"
+    });
+    SendWebsocketMessage(ws, {
+        data: JSON.stringify(storedSettings),
+        type: "Settings"
     });
 });
 const displayWebsocketServer = new ws_1.WebSocketServer({ port: socketDisplayPort });
@@ -197,6 +213,45 @@ async function ChangeImage(name, automatic) {
 }
 // Default Image
 ChangeImage(defaultImage);
+// Change Settings
+async function BroadcastCurrentSettings() {
+    VerboseLog("Broadcasting settings to", socketArray.length, "client(s)");
+    // Validity Check
+    for (const i in socketArray) {
+        const index = Number.parseInt(i);
+        const socket = socketArray[index];
+        if (!socket) {
+            // Socket has closed or dissapeared, probably closed though
+            socketArray.splice(index, 1);
+            return BroadcastCurrentSettings();
+        }
+    }
+    // Send
+    const settingsJson = JSON.stringify(storedSettings);
+    for (const i in socketArray) {
+        const socket = socketArray[i];
+        if (socket) {
+            SendWebsocketMessage(socket, {
+                data: settingsJson,
+                type: "Settings"
+            });
+        }
+    }
+}
+async function ChangeSetting(settingName, value) {
+    // Type check
+    let currentValue = storedSettings[settingName];
+    if (currentValue == undefined || typeof (currentValue) != typeof (value) || value == undefined)
+        return false;
+    // Match check
+    if (currentValue == value)
+        return true;
+    // Set value
+    storedSettings[settingName] = value;
+    // Broadcast
+    BroadcastCurrentSettings();
+    return true;
+}
 // Automation
 async function GetAutomatedImageData() {
     const date = new Date();
@@ -275,7 +330,7 @@ async function RunAutomationLoop() {
         const socket = socketArray[i];
         if (socket) {
             SendWebsocketMessage(socket, {
-                data: JSON.stringify({ timeLeft: nextChangeDisplayValue - new Date().getTime(), nextImage: nextImage }),
+                data: JSON.stringify(storedSettings.OverrideTimer && { timeLeft: "BYPASS" } || { timeLeft: nextChangeDisplayValue - new Date().getTime(), nextImage: nextImage }),
                 type: "Timer"
             });
         }

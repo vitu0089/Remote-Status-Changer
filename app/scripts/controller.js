@@ -1,14 +1,26 @@
-let currentMap = new Map()
-const host = window.location.host
-let socket = new WebSocket(`ws://${document.location.hostname}:61235`)
 const body = document.getElementById("body")
 const timer = document.getElementById("timer")
+const overrideTimerButton = document.getElementById("overrideTimer")
+const host = window.location.host
+const originalBodyColor = window.getComputedStyle(body).backgroundColor
+
+let currentMap = new Map()
+let socket = new WebSocket(`ws://${document.location.hostname}:61235`)
 let nextChangeTime = 0
 let nextChangeImage = ""
-const originalBodyColor = window.getComputedStyle(body).backgroundColor
+let cachedSettings = {
+    OverrideTimer : false
+}
 async function GetImageData() {
     let body = await fetch(`http://${host}/controls/imageData`)
     return await body.json()
+}
+
+async function SendSocket(sendType, data) {
+    socket.send(JSON.stringify({
+        type : sendType,
+        data : data
+    }))
 }
 
 async function UpdateList() {
@@ -30,14 +42,14 @@ async function UpdateList() {
         currentMap.set(item.Name, node)
 
         // Clickability
-        node.onclick = function(event) {
+        node.onclick = function() {
             if (socket.readyState == 3 /* 3 means closed */) {
                 console.error("Socket has been closed, please wait for server to restart")
                 return
             }
             
             // Force server to change image
-            socket.send(item.Name)
+            SendSocket("ChangeImage", item.Name)
         }
     }
 }
@@ -47,6 +59,11 @@ UpdateList()
 
 // Timer
 function UpdateTimer() {
+    if (cachedSettings.OverrideTimer) {
+        timer.innerHTML = "Timer is currently paused"
+        return
+    }
+
     let date = new Date()
     let secondsLeft = Math.floor(Math.max(nextChangeTime - date.getTime(), 0) / 1_000)
     let hoursLeft = Math.floor(secondsLeft / 3_600)
@@ -62,6 +79,11 @@ function UpdateTimer() {
 setInterval(() => {
     UpdateTimer()
 }, 300)
+
+// Settings
+overrideTimerButton.addEventListener("click", event => {
+    SendSocket("Settings_OverrideTimer", overrideTimerButton.checked)
+})
 
 // Socket connections
 function SetupSocketConnection(reboot) {
@@ -93,9 +115,19 @@ function SetupSocketConnection(reboot) {
                 displayNode.setAttribute("src", `/img/${selectedImage.FileName}`)
             }
         } else if (data.type == "Timer") {
+            // Update the timer
             let changeData = JSON.parse(data.data)
             nextChangeTime = new Date().getTime() + changeData.timeLeft
             nextChangeImage = changeData.nextImage
+            UpdateTimer()
+        } else if (data.type == "Settings") {
+            // Force update all settings
+            let settings = JSON.parse(data.data)
+            cachedSettings = settings
+            
+            overrideTimerButton.checked = settings.OverrideTimer
+
+            // Update
             UpdateTimer()
         }
     })
