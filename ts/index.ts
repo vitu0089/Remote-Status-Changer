@@ -32,6 +32,15 @@ const ChangeTimes : {TimeOfDayPlusTime : {hours? : number, minutes? : number}, I
         },
         Image : "Closed (Purple)",
         AvoidWeekends : true
+    },
+
+    { // Close when the day is completely over, to override manual input
+        TimeOfDayPlusTime : {
+            hours : 12,
+            minutes : 3
+        },
+        Image : "Closed (Purple)",
+        AvoidWeekends : true
     }
 ]
 
@@ -137,6 +146,14 @@ managerWebsocketServer.on("connection", (ws, req) => {
             if (typeof(newStatus) != "boolean") return;
 
             ChangeSetting("OverrideTimer", newStatus)
+
+            // Broadcast change
+            for (const socket of socketArray) {
+                SendWebsocketMessage(socket, {
+                    data: JSON.stringify(storedSettings.OverrideTimer && {timeLeft : "BYPASS"} || {timeLeft : nextChangeDisplayValue - new Date().getTime(), nextImage: nextImage}),
+                    type : "Timer"
+                })
+            }
         }
     })
 
@@ -222,6 +239,12 @@ async function ChangeImage(name : string | null, automatic? : boolean) : Promise
 
     // Logging
     VerboseLog(`${automatic && `[ AUTOMATIC ] ` || ""}Changing image to:`, name)
+
+    // Bypass Check
+    if (storedSettings.OverrideTimer && automatic) {
+        VerboseLog(`${automatic && `[ AUTOMATIC ] ` || ""}Cancelled image change due to settings`)
+        return true
+    }
 
     // Null Check
     if (name == null) {
@@ -371,8 +394,8 @@ async function RunAutomationLoop() {
         ChangeImage(timeTillChangeObject.NextImage, true)
 
         // Wait 5 seconds to not overlap anything
-        setTimeout(RunAutomationLoop, 5_000)
-        VerboseLog("Waiting for 5 seconds to avoid overlap")
+        setTimeout(RunAutomationLoop, 2_000)
+        VerboseLog("Waiting for 2 seconds to avoid overlap")
     }, timeTillChangeObject.TimeToChangeMs)
     VerboseLog(`Waiting for ${Math.floor(timeTillChangeObject.TimeToChangeMs / 1000)} seconds to change to image ${timeTillChangeObject.NextImage}`)
 
@@ -385,7 +408,7 @@ async function RunAutomationLoop() {
         const socket = socketArray[i]
         if (socket) {
             SendWebsocketMessage(socket, {
-                data: JSON.stringify(storedSettings.OverrideTimer && {timeLeft : "BYPASS"} ||{timeLeft : nextChangeDisplayValue - new Date().getTime(), nextImage: nextImage}),
+                data: JSON.stringify(storedSettings.OverrideTimer && {timeLeft : "BYPASS"} || {timeLeft : nextChangeDisplayValue - new Date().getTime(), nextImage: nextImage}),
                 type : "Timer"
             })
         }

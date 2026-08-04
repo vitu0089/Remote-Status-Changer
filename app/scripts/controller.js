@@ -38,6 +38,7 @@ async function UpdateList() {
         let node = document.createElement("div")
         node.id = "listItem"
         node.innerHTML = `<h2>${item.Name}</h2>`
+        node.classList.add("nonSelect")
         document.getElementById("list").appendChild(node)
         currentMap.set(item.Name, node)
 

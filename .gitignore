@@ -1,4 +1,5 @@
 node_modules
 app/images/*
+app/imageData*
 !app/images/Icon.ico
 !app/images/ImageNotFound.png

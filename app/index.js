@@ -34,6 +34,14 @@ const ChangeTimes = [
         },
         Image: "Closed (Purple)",
         AvoidWeekends: true
+    },
+    {
+        TimeOfDayPlusTime: {
+            hours: 12,
+            minutes: 3
+        },
+        Image: "Closed (Purple)",
+        AvoidWeekends: true
     }
 ];
 // Variables
@@ -121,6 +129,13 @@ managerWebsocketServer.on("connection", (ws, req) => {
             if (typeof (newStatus) != "boolean")
                 return;
             ChangeSetting("OverrideTimer", newStatus);
+            // Broadcast change
+            for (const socket of socketArray) {
+                SendWebsocketMessage(socket, {
+                    data: JSON.stringify(storedSettings.OverrideTimer && { timeLeft: "BYPASS" } || { timeLeft: nextChangeDisplayValue - new Date().getTime(), nextImage: nextImage }),
+                    type: "Timer"
+                });
+            }
         }
     });
     // Websocket cleanup
@@ -195,6 +210,11 @@ async function ChangeImage(name, automatic) {
         return false;
     // Logging
     VerboseLog(`${automatic && `[ AUTOMATIC ] ` || ""}Changing image to:`, name);
+    // Bypass Check
+    if (storedSettings.OverrideTimer && automatic) {
+        VerboseLog(`${automatic && `[ AUTOMATIC ] ` || ""}Cancelled image change due to settings`);
+        return true;
+    }
     // Null Check
     if (name == null) {
         selectedImage = null;
@@ -318,8 +338,8 @@ async function RunAutomationLoop() {
     setTimeout(() => {
         ChangeImage(timeTillChangeObject.NextImage, true);
         // Wait 5 seconds to not overlap anything
-        setTimeout(RunAutomationLoop, 5_000);
-        VerboseLog("Waiting for 5 seconds to avoid overlap");
+        setTimeout(RunAutomationLoop, 2_000);
+        VerboseLog("Waiting for 2 seconds to avoid overlap");
     }, timeTillChangeObject.TimeToChangeMs);
     VerboseLog(`Waiting for ${Math.floor(timeTillChangeObject.TimeToChangeMs / 1000)} seconds to change to image ${timeTillChangeObject.NextImage}`);
     // Set display value

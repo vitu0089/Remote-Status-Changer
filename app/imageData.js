@@ -12,6 +12,10 @@ let allImages = [
     {
         Name: "Closed (Purple)",
         FileName: "Closed.png"
+    },
+    {
+        Name: "Vacation Closed (Purple)",
+        FileName: "VacationClosed.png"
     }
 ];
 exports.default = allImages;

@@ -12,6 +12,11 @@ let allImages : {Name : string, FileName : string}[] = [
     {
         Name : "Closed (Purple)",
         FileName : "Closed.png"
+    },
+
+    {
+        Name : "Vacation Closed (Purple)",
+        FileName : "VacationClosed.png"
     }
 ]
 
