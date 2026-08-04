@@ -34,14 +34,6 @@ const ChangeTimes = [
         },
         Image: "Closed (Purple)",
         AvoidWeekends: true
-    },
-    {
-        TimeOfDayPlusTime: {
-            hours: 12,
-            minutes: 3
-        },
-        Image: "Closed (Purple)",
-        AvoidWeekends: true
     }
 ];
 // Variables
