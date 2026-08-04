@@ -32,15 +32,6 @@ const ChangeTimes : {TimeOfDayPlusTime : {hours? : number, minutes? : number}, I
         },
         Image : "Closed (Purple)",
         AvoidWeekends : true
-    },
-
-    { // Close when the day is completely over, to override manual input
-        TimeOfDayPlusTime : {
-            hours : 12,
-            minutes : 3
-        },
-        Image : "Closed (Purple)",
-        AvoidWeekends : true
     }
 ]
 
